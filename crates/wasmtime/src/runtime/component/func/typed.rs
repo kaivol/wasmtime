@@ -967,10 +967,8 @@ macro_rules! floats {
                 // This is not a `copy_from_slice` because endianness needs to
                 // be handled here, but LLVM should pretty easily transform this
                 // into a memcpy on little-endian platforms.
-                // TODO use `as_chunks` when https://github.com/rust-lang/rust/issues/74985
-                // is stabilized
-                for (dst, src) in iter::zip(dst.chunks_exact_mut(Self::SIZE32), items) {
-                    let dst: &mut [u8; Self::SIZE32] = dst.try_into().unwrap();
+                let (chunks, []) = dst.as_chunks_mut::<{Self::SIZE32}>() else { unreachable!() };
+                for (dst, src) in iter::zip(chunks, items) {
                     *dst = src.to_le_bytes();
                 }
                 Ok(())
@@ -1002,12 +1000,11 @@ macro_rules! floats {
 
                 // Copy the resulting slice to a new Vec, handling endianness
                 // in the process
-                // TODO use `as_chunks` when https://github.com/rust-lang/rust/issues/74985
-                // is stabilized
+                let (chunks, []) = bytes.as_chunks::<{Self::SIZE32}>() else { unreachable!() };
                 Ok(
-                    bytes
-                        .chunks_exact(Self::SIZE32)
-                        .map(|i| $float::from_le_bytes(i.try_into().unwrap()))
+                    chunks
+                        .iter()
+                        .map(|i| $float::from_le_bytes(*i))
                         .collect()
                 )
             }
